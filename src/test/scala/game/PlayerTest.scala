@@ -2,6 +2,8 @@ package game
 
 import org.scalatest.flatspec.AnyFlatSpec
 
+import java.io.ByteArrayOutputStream
+
 class PlayerTest extends AnyFlatSpec {
   behavior of "Player"
 
@@ -37,5 +39,15 @@ class PlayerTest extends AnyFlatSpec {
     assert(player2.hp == 9)
     assert(player1.weapon.get.durability == 9)
     assert(player2.shield.get.durability == 15)
+  }
+
+  it should "print I beat otherPlayer.name if other player's hp is less than or equal to 0" in {
+    val player1 = new Player("player1", 10, Some(Gladius()), Some(SmallShield()))
+    val player2 = new Player("player2", 1, Some(Dagger()), Some(BucklerShield()))
+    val output = new ByteArrayOutputStream()
+    Console.withOut(output) {
+      player1.attack(player2)
+    }
+    assert(output.toString == "I beat player2\n")
   }
 }
