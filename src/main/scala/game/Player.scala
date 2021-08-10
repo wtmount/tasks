@@ -19,6 +19,10 @@ class Player(val name: String, var hp: Int, var weapon: Option[Weapon], var shie
 
   private def doDamage(player: Player, damage: Int): Unit = {
     player.hp -= damage
+    isKilled(player)
+  }
+
+  private[game] def isKilled(player: Player): Unit = {
     if (player.hp <= 0) println(s"I beat ${player.name}")
   }
 }
