@@ -26,8 +26,10 @@ object Email {
   def apply(localPart: String, domain: String): String = localPart + "@" + domain
 
   def unapply(email: String): Option[(String, String)] = {
-    val parts = email.split("@")
-    if (parts.length == 2) Some(parts(0), parts(1)) else None
+    email.split("@") match {
+      case Array(first, second) => Some(first, second)
+      case _ => None
+    }
   }
 }
 

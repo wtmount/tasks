@@ -33,6 +33,6 @@ class ExtractorTest extends AnyFlatSpec {
     Console.withOut(output) {
       Extractor.printEmailsInGmailDomain(Array("email@notgmail.com", "email@gmail.com"))
     }
-    assert(output.toString == "email@gmail.com\n")
+    assert(output.toString == ("email@gmail.com" + System.lineSeparator))
   }
 }
