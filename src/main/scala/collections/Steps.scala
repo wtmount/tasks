@@ -1,12 +1,12 @@
 package collections
 
-object Steps extends App {
-  val N = 10
-  println(countSteps(N).size)
+class Steps {
+  val steps = List(2, 3, 5)
 
-  def countSteps(n: Int): LazyList[Int] = {
-    if (n < 0) LazyList.empty
-    else if (n == 0) LazyList(1)
-    else countSteps(n - 2) #::: countSteps(n - 3) #::: countSteps(n - 5)
+  def countSteps(): LazyList[Int] = 1 #:: count(LazyList(1))
+
+  private def count(l: LazyList[Int] = LazyList.empty): LazyList[Int] = {
+    val ways = steps.map(s => if (l.length - s >= 0) l(l.length - s) else 0).sum
+    ways #:: count(l :+ ways)
   }
 }
