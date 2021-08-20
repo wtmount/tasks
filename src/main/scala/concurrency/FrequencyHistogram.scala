@@ -16,7 +16,7 @@ object FrequencyHistogram extends App {
       case None => Some(1)
     })
 
-  val histogram = for (i <- wordCount) yield f"${i._1}%-20s${"*" * i._2}"
+  val histogram = for ((word, count) <- wordCount) yield f"$word%-20s${"*" * count}"
   val out = new BufferedWriter(new FileWriter(new File("histogram.txt")))
   out.write(histogram.mkString(System.lineSeparator))
   out.close()
