@@ -1,6 +1,6 @@
 package collections
 
-class Steps {
+object Steps {
   val steps = List(2, 3, 5)
 
   def countSteps(): LazyList[Int] = 1 #:: count(LazyList(1))
