@@ -1,5 +1,7 @@
 package implicits
 
+import Rational._
+
 import org.scalatest.flatspec.AnyFlatSpec
 
 class RationalTest extends AnyFlatSpec {
@@ -97,6 +99,14 @@ class RationalTest extends AnyFlatSpec {
     assert((Rational(9, 2) max 4) == Rational(9, 2))
   }
 
+  it should "return larger of Long and rational" in {
+    assert((4L max Rational(9, 2)) == Rational(9, 2))
+  }
+
+  it should "return larger of Int and rational" in {
+    assert((4 max Rational(9, 2)) == Rational(9, 2))
+  }
+
   it should "return smaller of two rationals" in {
     assert((Rational(2, 3) min Rational(1, 2)) == Rational(1, 2))
   }
@@ -107,5 +117,13 @@ class RationalTest extends AnyFlatSpec {
 
   it should "return smaller of rational and Int" in {
     assert((Rational(9, 2) min 4) == Rational(4, 1))
+  }
+
+  it should "return smaller of Long and rational" in {
+    assert((4l min Rational(9, 2)) == Rational(4L))
+  }
+
+  it should "return smaller of Int and rational" in {
+    assert((4 min Rational(9, 2)) == Rational(4))
   }
 }

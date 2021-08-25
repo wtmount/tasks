@@ -23,5 +23,6 @@ object Rational {
 
   private def gcd(n: Long, d: Long): Long = if (d == 0) n else gcd(d, n % d)
 
+  implicit def intToRational(i: Int): Rational = Rational(i)
   implicit def longToRational(l: Long): Rational = Rational(l)
 }
