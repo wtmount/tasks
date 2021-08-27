@@ -18,7 +18,8 @@ object Reduce {
     }
   }
 
-  def reduce[T: Monoid](seq: Seq[T]): T = {
+  def reduce[T: Monoid](seq: Seq[T]): T = seq.foldLeft(implicitly[Monoid[T]].empty)(implicitly[Monoid[T]].add)
+
+  def reduce2[T: Monoid](seq: Seq[T]): T =
     if (seq.isEmpty) implicitly[Monoid[T]].empty else implicitly[Monoid[T]].add(seq.head, reduce(seq.tail))
-  }
 }
