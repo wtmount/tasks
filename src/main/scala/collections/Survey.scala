@@ -2,7 +2,7 @@ package collections
 
 import collections.Activity.{Activity, All, Leisure, PrimaryNeeds, Work}
 import collections.Age.{Age, Active, Elder, Young}
-import collections.Employability.{Employability, Unemployed, Working}
+import collections.WorkingStatus.{WorkingStatus, Unemployed, Working}
 import collections.Sex.{Sex, Female, Male}
 
 import scala.io.Source
@@ -30,7 +30,7 @@ object Survey extends App {
   printf("Time spent on primary needs%n  young people - %.2f%n  active people - %.2f%n  elder people - %.2f%n%n",
     calculateTime(_.age == Young, PrimaryNeeds), calculateTime(_.age == Active, PrimaryNeeds), calculateTime(_.age == Elder, PrimaryNeeds))
   printf("Leisure time of working people compared to unemployed people:%n  working people - %.2f%n  unemployed people - %.2f%n",
-    calculateTime(_.workStatus == Working, Leisure), calculateTime(_.workStatus == Unemployed, Leisure))
+    calculateTime(_.workingStatus == Working, Leisure), calculateTime(_.workingStatus == Unemployed, Leisure))
 
   def findColumns(columns: List[String]): List[String] = headers.filter(h => columns.exists(cn => h.startsWith(cn)))
 
@@ -46,17 +46,17 @@ object Survey extends App {
   }
 }
 
-case class Respondent(sex: Sex, age: Age, workStatus: Employability, primaryNeeds: Double, work: Double, leisure: Double)
+case class Respondent(sex: Sex, age: Age, workingStatus: WorkingStatus, primaryNeeds: Double, work: Double, leisure: Double)
 
 object Respondent {
-  def apply(sex: Int, age: Int, workStatus: Int, primaryNeeds: Double, work: Double, leisure: Double): Respondent = {
-    val sexEnum = if (sex == 1) Male else Female
-    val ageEnum =
-      if (15 <= age && age <= 22) Young
-      else if (23 <= age && age <= 55) Active
+  def apply(sexCategory: Int, ageCategory: Int, workingStatusCategory: Int, primaryNeeds: Double, work: Double, leisure: Double): Respondent = {
+    val sex = if (sexCategory == 1) Male else Female
+    val age =
+      if (15 <= ageCategory && ageCategory <= 22) Young
+      else if (23 <= ageCategory && ageCategory <= 55) Active
       else Elder
-    val workEnum = if (1 <= workStatus && workStatus < 3) Working else Unemployed
-    new Respondent(sexEnum, ageEnum, workEnum, primaryNeeds, work, leisure)
+    val workingStatus = if (1 <= workingStatusCategory && workingStatusCategory < 3) Working else Unemployed
+    new Respondent(sex, age, workingStatus, primaryNeeds, work, leisure)
   }
 }
 
@@ -75,7 +75,7 @@ object Age extends Enumeration {
   val Young, Active, Elder = Value
 }
 
-object Employability extends Enumeration {
-  type Employability = Value
+object WorkingStatus extends Enumeration {
+  type WorkingStatus = Value
   val Working, Unemployed = Value
 }
