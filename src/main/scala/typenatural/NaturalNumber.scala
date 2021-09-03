@@ -5,12 +5,12 @@ object NaturalNumber {
     type Add[N <: Nat] <: Nat
     type Multiply[N <: Nat] <: Nat
     type ReversePow[N <: Nat] <: Nat
-    type Pow[N <: Nat] = N#ReversePow[this.type]
+    type Pow[N <: Nat] <: Nat
     type Fact <: Nat
     type Sum <: Nat
     type Dec <: Nat
     type ReverseSubtract[N <: Nat] <: Nat
-    type Subtract[N <: Nat] = N#ReverseSubtract[this.type]
+    type Subtract[N <: Nat] <: Nat
     type Fib <: Nat
   }
 
@@ -29,15 +29,18 @@ object NaturalNumber {
     type Add[N2 <: Nat] = Inc[N#Add[N2]]
     type Multiply[N2 <: Nat] = N2#Add[N#Multiply[N2]]
     type ReversePow[N2 <: Nat] = N2#Multiply[N#ReversePow[N2]]
+    type Pow[N2 <: Nat] = N2#ReversePow[Inc[N]]
     type Fact = Inc[N]#Multiply[N#Fact]
     type Sum = Inc[N]#Add[N#Sum]
     type Dec = N
     type ReverseSubtract[N2 <: Nat] = N#ReverseSubtract[N2#Dec]
+    type Subtract[N2 <: Nat] = N2#ReverseSubtract[Inc[N]]
     type Fib = N#Fib#Add[N#Dec#Fib]
   }
 
   implicitly[_3#Add[_5] =:= _8]
   implicitly[_3#Multiply[_5] =:= _15]
+  implicitly[_4#ReversePow[_2] =:= _16]
   implicitly[_2#Pow[_4] =:= _16]
   implicitly[_4#Fact =:= _24]
   implicitly[_5#Sum =:= _15]
