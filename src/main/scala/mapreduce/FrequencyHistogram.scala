@@ -1,80 +1,92 @@
 package mapreduce
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorSystem, OneForOneStrategy, Props}
-import akka.routing.RoundRobinPool
+import akka.actor.{Actor, ActorRef, ActorSystem, OneForOneStrategy, Props}
+import akka.pattern.ask
+import akka.util.Timeout
 
 import java.io.{BufferedWriter, File, FileWriter}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.DurationInt
-import scala.io.{BufferedSource, Source}
+import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration._
+import scala.io.Source
 import scala.language.postfixOps
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
-case object CountWordsInFile
+case class CountWordsInFile(lines: Array[String])
 case class CountWordsInChunk(chunkIndex: Int, chunk: Array[String])
-case class CountedWords(chunkIndex: Int, countedWords: mutable.HashMap[String, Int])
-case class FailedMapping(chunkIndex: Int, chunk: Array[String])
+case class CountedWords(chunkIndex: Int, countedWords: Map[String, Int])
 case class TotalWordCount(chunkIndex: Int, totalCount: mutable.HashMap[String, Int])
 
 object FrequencyHistogram extends App {
   val system = ActorSystem("MainFrequencyHistogram")
-  val in = Source.fromResource("t8.shakespeare.txt")
+  val lines = Source.fromResource("t8.shakespeare.txt").getLines.toArray
   val out = new BufferedWriter(new FileWriter(new File("histogram.txt")))
-  val mapReducer = system.actorOf(Props(new MapReducer(in, out, 10, 5, system)), name = "mapReducer")
-  mapReducer ! CountWordsInFile
+  val mapReducer = system.actorOf(Props(new MapReducer(10, 5)), name = "mapReducer")
+
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  implicit val timeout: Timeout = Timeout(10 second)
+
+  (mapReducer ? CountWordsInFile(lines)).onComplete {
+    case Success(result: mutable.HashMap[_, _]) =>
+      out.write(result.mkString(System.lineSeparator))
+      out.close()
+      system.terminate()
+    case Failure(f) =>
+      out.write("Failed to process file...")
+      out.close()
+      system.terminate()
+  }
 }
 
-class MapReducer(in: BufferedSource, out: BufferedWriter, numberOfChunks: Int, numberOfActors: Int, system: ActorSystem) extends Actor {
+class MapReducer(numberOfChunks: Int, numberOfActors: Int) extends Actor {
+  (1 to numberOfActors).foreach(i => context.actorOf(Props[Mapper](new Mapper(Random)), s"$i"))
   private val reducer = context.actorOf(Props[Reducer], name = "reducer")
-  private val countedChunks = ListBuffer.from(for (i <- 1 to numberOfChunks) yield i)
-  private val strategy = OneForOneStrategy(maxNrOfRetries = 5, withinTimeRange = 1 second) {
-    case _ => Restart
+  private val countedChunks = ListBuffer.from(1 to numberOfChunks)
+  private var jobCreator: ActorRef = _
+  private var nextIndex = 0
+  override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy(maxNrOfRetries = 5, withinTimeRange = 100 millisecond) {
+    case _: RuntimeException => Restart
   }
-  private val router = context.actorOf(RoundRobinPool(numberOfActors, supervisorStrategy = strategy).props(Props[Mapper](new Mapper(Random))),"router")
 
   def receive = {
-    case CountWordsInFile =>
-      val lines = in.getLines().toArray
+    case CountWordsInFile(lines) =>
+      jobCreator = sender
       val chunkSize = lines.length / numberOfChunks
       var currentPosition = 0
       for (i <- 1 until numberOfChunks) {
-        router ! CountWordsInChunk(i, lines.slice(currentPosition, currentPosition + chunkSize))
+        if (nextIndex >= numberOfActors) nextIndex = 0
+        val child = context.children.toIndexedSeq(nextIndex)
+        child ! CountWordsInChunk(i, lines.slice(currentPosition, currentPosition + chunkSize))
+        nextIndex += 1
         currentPosition += chunkSize
       }
-      router ! CountWordsInChunk(numberOfChunks, lines.slice(currentPosition, lines.length))
+      if (nextIndex >= numberOfActors) nextIndex = 0
+      context.children.toIndexedSeq(nextIndex) ! CountWordsInChunk(numberOfChunks, lines.slice(currentPosition, lines.length))
 
     case cw @ CountedWords(_, _) => reducer ! cw
 
-    case FailedMapping(chunkIndex, chunk) => router ! CountWordsInChunk(chunkIndex, chunk)
-
     case TotalWordCount(chunkIndex, totalWordCount) =>
       countedChunks -= chunkIndex
-      if (countedChunks.isEmpty) {
-        out.write(totalWordCount.mkString(System.lineSeparator))
-        out.close()
-        system.terminate()
-      }
+      if (countedChunks.isEmpty) jobCreator ! totalWordCount
   }
 }
 
 class Mapper(random: Random) extends Actor {
   def receive = {
     case CountWordsInChunk(chunkIndex, chunk) =>
-      val countedWords = mutable.HashMap[String, Int]()
-      chunk.flatMap(line => line.split("[\\s.,:;!?()*'\"\\[\\]]+").map(_.toLowerCase))
-        .foreach(word => countedWords.updateWith(word) {
-          case Some(count) => Some(count + 1)
-          case None => Some(1)
-        })
+      val countedWords = chunk.flatMap(line => line.split("[\\s.,:;!?()*'\"\\[\\]]+").map(_.toLowerCase)).groupBy(identity).view.mapValues(_.length).toMap
       val wrongNumber = random.nextInt(200)
       if (countedWords.values.exists(_ == wrongNumber)) {
-        sender ! FailedMapping(chunkIndex, chunk)
         throw new RuntimeException
       } else {
         sender ! CountedWords(chunkIndex, countedWords)
       }
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    message.foreach(m => self.tell(m, context.parent))
   }
 }
 
